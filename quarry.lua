@@ -149,6 +149,17 @@ function goTo(targetPosition)
         goDown(-deltaY)
     end
 
+    -- The turtle digs from side to side going forward (x++) so we
+    -- move up and back to the first layer we dug out before
+    -- moving to the right (z--) when going back to deposit
+    if deltaX > 0 then
+        turnTo(Direction.FORWARD)
+        goForward(deltaX)
+    elseif deltaX < 0 then
+        turnTo(Direction.BACK)
+        goForward(-deltaX)
+    end
+    
     if deltaZ > 0 then
         turnTo(Direction.LEFT)
         goForward(deltaZ)
@@ -157,15 +168,6 @@ function goTo(targetPosition)
         goForward(-deltaZ)
     end
     
-    -- The turtle moves forward (x++) first when mining so we move along y and z first
-    -- when going back to deposit
-    if deltaX > 0 then
-        turnTo(Direction.FORWARD)
-        goForward(deltaX)
-    elseif deltaX < 0 then
-        turnTo(Direction.BACK)
-        goForward(-deltaX)
-    end
 
     turnTo(targetPosition.direction)
 end
@@ -221,39 +223,45 @@ function dumpInventoryIfFull()
     return true
 end
 
-digStepForward(stepsForwardBeforeDig)
-startDigPosition = shallowCopy(currentPosition)
-refuel()
-while true do
-    layerDigStartPosition = shallowCopy(currentPosition)
-    smallestChunkSize = (digChunkSize % 2 == 0) and 2 or 1
-    for i = digChunkSize, smallestChunkSize, -1 do
-        print("Digging at layer " .. i .. " / " .. digChunkSize)
-        -- we start inside the chunk so we subtract 1
-        distance = i - 1
-        dumpInventoryIfFull()
-        digStepForward(distance)
-        turnLeft()
-        dumpInventoryIfFull()
-        digStepForward(distance)
-        turnLeft()
-        dumpInventoryIfFull()
-        digStepForward(distance)
-        turnLeft()
-        dumpInventoryIfFull()
-        digStepForward(distance - 1)
-        isLast = i == smallestChunkSize
-        if not isLast then
-            turnLeft()
-            dumpInventoryIfFull()
-        end 
+function makeStaircase()
+    while turtle.detectUp() do
+        turtle.dig()
+        turtle.digUp()
+        turtle.turnRight()
+        turtle.up()
+        sleep(2)
     end
-    goTo(layerDigStartPosition)
-    dumpInventoryIfFull()
-    goDown(1)
-    turtle.digDown()
-    goDown(1)
-    turtle.digDown()
-    goDown(1)
 end
 
+makeStaircase()
+
+function quarry()
+    digStepForward(stepsForwardBeforeDig)
+    startDigPosition = shallowCopy(currentPosition)
+    refuel()
+    while true do
+        layerDigStartPosition = shallowCopy(currentPosition)
+        distance = digChunkSize
+        for i = 1, digChunkSize do
+            turnLeft()
+            digStepForward(distance)
+            dumpInventoryIfFull()
+            turnRight()
+            digStepForward(1)
+            dumpInventoryIfFull()
+            turnRight()
+            digStepForward(distance)
+            dumpInventoryIfFull()
+            turnLeft()
+            digStepForward(1)
+            dumpInventoryIfFull()
+        end
+        goTo(layerDigStartPosition)
+        dumpInventoryIfFull()
+        goDown(1)
+        turtle.digDown()
+        goDown(1)
+        turtle.digDown()
+        goDown(1)
+    end
+end
