@@ -1,7 +1,7 @@
 minFuel = 5
 minDepoFuel = 20
 maxFuel = 50
-digChunkSize = 4
+digChunkSize = 8
 stepsForwardBeforeDig = 3
 
 Direction = {
@@ -95,11 +95,13 @@ function goForward(distance)
     end
     while turtle.detect() do
         turtle.dig()
-        sleep(1)
+        -- sleep(1)
     end
     for i = 1, distance do
         refuel()
-        turtle.forward()
+        while not turtle.forward() do
+            -- keep trying to move forward
+        end
         if currentPosition.direction == Direction.FORWARD then
             currentPosition.x = currentPosition.x + 1
         elseif currentPosition.direction == Direction.LEFT then
@@ -118,10 +120,13 @@ function goUp(distance)
     end
     while turtle.detectUp() do
         turtle.digUp()
-        sleep(1)
+        -- sleep(1)
     end
     for i = 1, distance do
-        turtle.up()
+        while not turtle.detectUp() do
+            -- keep trying to move up
+        end
+        currentPosition.y = currentPosition.y + 1
     end
 end
 
@@ -131,10 +136,13 @@ function goDown(distance)
     end
     while turtle.detectDown() do
         turtle.digDown()
-        sleep(1)
+        -- sleep(1)
     end
     for i = 1, distance do
-        turtle.down()
+        while not turtle.down() do
+            -- keep trying to move down
+        end
+        currentPosition.y = currentPosition.y - 1
     end
 end
 
@@ -177,7 +185,7 @@ function digStep()
         -- to handle gravel, sand etc.
         turtle.digUp()
         if turtle.detectUp() then
-            sleep(1)
+            -- sleep(1)
         end
     end
     if turtle.detectDown() then
@@ -187,7 +195,7 @@ function digStep()
         -- to handle gravel, sand etc.
         turtle.dig()
         if turtle.detect() then
-            sleep(1)
+            -- sleep(1)
         end
     end
 end
@@ -209,7 +217,9 @@ function dumpInventoryIfFull()
     end
     initialPosition = shallowCopy(currentPosition)
     print("Going to drop inventory")
-    goTo(0, 0, 0)
+    goTo(startDigPosition)
+    turnTo(Direction.BACK)
+    goTo(startPosition)
     for i = 2, 16 do
         turtle.select(i)
         turtle.drop()
@@ -223,26 +233,62 @@ function dumpInventoryIfFull()
     return true
 end
 
-function makeStaircase()
-    while turtle.detectUp() do
-        turtle.dig()
-        turtle.digUp()
-        turtle.turnRight()
-        turtle.up()
-        sleep(2)
+function simpleRefuel()
+    while turtle.getFuelLevel() < 20 do
+        turtle.select(1)
+        turtle.refuel(1)
+        print("Fuel level: " .. turtle.getFuelLevel() .. " / 20")
     end
 end
 
-makeStaircase()
+function makeStaircaseUp()
+    repeat
+        simpleRefuel()
+        while turtle.detectUp() do
+            turtle.digUp()
+        end
+        
+        turtle.up()
+        
+        while turtle.detectUp() do
+            turtle.digUp()
+        end
+
+        while turtle.detect() do
+            turtle.dig()
+        end
+
+        turtle.forward()
+
+    until not turtle.detectUp()
+end
+
+function makeStaircaseDown()
+    repeat
+        simpleRefuel()
+        while turtle.detect() do
+            turtle.dig()
+        end
+        turtle.digDown()
+        turtle.down()
+        while turtle.detect() do
+            turtle.dig()
+        end
+        turtle.forward()
+
+    until not turtle.detectDown()
+end
 
 function quarry()
     digStepForward(stepsForwardBeforeDig)
     startDigPosition = shallowCopy(currentPosition)
     refuel()
     while true do
+        dumpInventoryIfFull()
         layerDigStartPosition = shallowCopy(currentPosition)
-        distance = digChunkSize
-        for i = 1, digChunkSize do
+        -- subtract one because we are already are inside the chunk
+        distance = digChunkSize - 1
+        for i = 1, (digChunkSize / 2) do
             turnLeft()
             digStepForward(distance)
             dumpInventoryIfFull()
@@ -265,3 +311,6 @@ function quarry()
         goDown(1)
     end
 end
+
+-- makeStaircaseDown()
+quarry()
